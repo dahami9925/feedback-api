@@ -1,9 +1,20 @@
-const express = require('express');
-const mongoose = require('mongoose');
-const app = express();
-const PORT = 3000;
+// server.js
 
-// Connect to MongoDB
+const express = require('express');
+const cors = require('cors');
+const mongoose = require('mongoose');
+
+const app = express();  // ✅ Must be declared before use
+
+const PORT = 5050; // Or change to 3001 if port 5000 is busy
+
+// ✅ Enable CORS for frontend connection
+app.use(cors());
+
+// ✅ Enable JSON body parsing
+app.use(express.json());
+
+// ✅ MongoDB Connection
 mongoose.connect('mongodb://127.0.0.1:27017/feedback_db', {
   useNewUrlParser: true,
   useUnifiedTopology: true
@@ -11,10 +22,7 @@ mongoose.connect('mongodb://127.0.0.1:27017/feedback_db', {
 .then(() => console.log('✅ Connected to MongoDB'))
 .catch(err => console.error('❌ MongoDB connection error:', err));
 
-// Middleware to parse JSON
-app.use(express.json());
-
-// Feedback Schema
+// ✅ Schema + Model
 const feedbackSchema = new mongoose.Schema({
   name: String,
   message: String
@@ -22,58 +30,73 @@ const feedbackSchema = new mongoose.Schema({
 
 const Feedback = mongoose.model('Feedback', feedbackSchema);
 
-// ROUTES
+// ✅ Routes
 
-// Root
+// Health check
 app.get('/', (req, res) => {
   res.send('👋 Welcome to the Feedback API!');
 });
 
-// GET all feedback
+// Get all feedback
 app.get('/feedback', async (req, res) => {
-  const allFeedback = await Feedback.find();
-  res.json(allFeedback);
+  try {
+    const allFeedback = await Feedback.find();
+    res.json(allFeedback);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch feedback' });
+  }
 });
 
-// POST new feedback
+// Create feedback
 app.post('/feedback', async (req, res) => {
   const { name, message } = req.body;
   if (!name || !message) {
     return res.status(400).json({ error: 'Name and message are required' });
   }
 
-  const newFeedback = new Feedback({ name, message });
-  const saved = await newFeedback.save();
-  res.status(201).json(saved);
+  try {
+    const newFeedback = new Feedback({ name, message });
+    const saved = await newFeedback.save();
+    res.status(201).json(saved);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to save feedback' });
+  }
 });
 
-// PUT update feedback by ID
+// Update feedback
 app.put('/feedback/:id', async (req, res) => {
   const { id } = req.params;
   const { name, message } = req.body;
 
-  const updated = await Feedback.findByIdAndUpdate(
-    id,
-    { name, message },
-    { new: true } // return updated doc
-  );
+  try {
+    const updated = await Feedback.findByIdAndUpdate(
+      id,
+      { name, message },
+      { new: true }
+    );
 
-  if (!updated) return res.status(404).json({ error: 'Feedback not found' });
-
-  res.json(updated);
+    if (!updated) return res.status(404).json({ error: 'Feedback not found' });
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: 'Update failed' });
+  }
 });
 
-// DELETE feedback by ID
+// Delete feedback
 app.delete('/feedback/:id', async (req, res) => {
   const { id } = req.params;
 
-  const deleted = await Feedback.findByIdAndDelete(id);
-  if (!deleted) return res.status(404).json({ error: 'Feedback not found' });
+  try {
+    const deleted = await Feedback.findByIdAndDelete(id);
+    if (!deleted) return res.status(404).json({ error: 'Feedback not found' });
 
-  res.json({ message: 'Deleted successfully' });
+    res.json({ message: 'Deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Delete failed' });
+  }
 });
 
-// Start server
+// ✅ Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
 });
